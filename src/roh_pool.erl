@@ -23,19 +23,26 @@
     handle_info/2,
     terminate/2,
     code_change/3,
-    add_task/0]).
+    add_task/0,
+    stress/1]).
 
 -define(SERVER, ?MODULE).
 
--record(state, {supervisor, proc_opened = 0, length = 0, tasks = maps:new()}).
+-record(state, {supervisor, proc_opened = 0, length = 0, tasks = maps:new(), global = 0}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 
+stress(N) when N > 0 ->
+    add_task(),
+    stress(N - 1);
+stress(_N) -> ok.
+
+
 add_task() ->
-    UUID = erlang:phash2({random:uniform(500), now()}),
+    UUID = erlang:phash2({rand:uniform(500), now()}),
     Task = #task{id = UUID, body = "{\"name\":\"test_json\"}", time_start = now()},
     R = gen_server:call(?SERVER, {add_task, Task}),
     R.
@@ -76,9 +83,7 @@ maybe_run_next(M, Sup) ->
     case maps:size(M) of
         0 -> ok;
         N when N > 0 -> First = maps:get(lists:nth(1, maps:keys(M)), M),
-            C = {First#task.id, {roh_worker, start_link, [{First, self()}]},
-                transient, 5000, worker, [roh_worker]},
-            supervisor:start_child(Sup, C)
+            new_worker(First, Sup, self())
 
     end,
 
@@ -100,25 +105,14 @@ maybe_run_next(M, Sup) ->
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
 handle_call({add_task, Task = #task{id = UUID}}, _From, State = #state{proc_opened = PO, tasks = M, supervisor = Sup}) when PO =< 5 ->
-    M2 = maps:put(UUID, Task, M),
-    C = {UUID, {roh_worker, start_link, [{Task, self()}]},
-        transient, 5000, worker, [roh_worker]},
-    A = supervisor:start_child(Sup, C),
-    io:format("Child started, id: ~w, Task body: ~s PID: ~w ~n", [UUID, Task#task.body, A]),
-    {reply, ok, State#state{tasks = M2, proc_opened = State#state.proc_opened + 1, length = maps:size(M2)}};
-handle_call({add_task, Task = #task{id = UUID}}, _From, State = #state{proc_opened = PO, tasks = M}) ->
-    M2 = maps:put(UUID, Task, M),
-    io:format("Added, waiting list: ~w ~n:", [maps:size(M2)]),
-    {reply, ok, State#state{tasks = M2, length = maps:size(M2)}};
-handle_call({check_pending}, _From, State = #state{length = L, tasks = M, supervisor = Sup}) when L > 0 ->
-    First = lists:nth(1, maps:keys(M)),
-    C = {First#task.id, {roh_worker, start_link, [{First, self()}]},
-        transient, 5000, worker, [roh_worker]},
-    supervisor:start_child(Sup, C),
-    {reply, ok, State};
-handle_call({check_pending}, _From, State) ->
-    io:format("nothing to do ~n"),
-    {reply, ok, State};
+    M2 = append_task(Task, M),
+    A = new_worker(Task, Sup, self()),
+    roh_console_log:info("Child started, id: ~w, Task body: ~s PID: ~w ~n", [UUID, Task#task.body, A]),
+    {reply, ok, State#state{tasks = M2, proc_opened = State#state.proc_opened + 1, length = maps:size(M2), global = State#state.global + 1}};
+handle_call({add_task, Task}, _From, State = #state{tasks = M}) ->
+    M2 = append_task(Task, M),
+    roh_console_log:info("Added, waiting list: ~w ~n:", [maps:size(M2)]),
+    {reply, ok, State#state{tasks = M2, length = maps:size(M2), global = State#state.global + 1}};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -133,11 +127,10 @@ handle_call(_Request, _From, State) ->
     {noreply, NewState :: #state{}} |
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_cast({remove_task, ID}, State = #state{tasks = M, supervisor = Sup}) ->
+handle_cast({remove_task, ID}, State = #state{tasks = M, supervisor = Sup, global = G}) ->
     MD = maps:remove(ID, M),
-    supervisor:terminate_child(Sup, ID),
-    supervisor:delete_child(Sup, ID),
-    io:format("Removing task ~w len: ~w ~n", [ID, maps:size(MD)]),
+    stop_worker(ID, Sup),
+    roh_console_log:info("Removing task ~w len: ~w Total:~w ~n", [ID, maps:size(MD), G]),
     maybe_run_next(MD, Sup),
     {noreply, State#state{tasks = MD, proc_opened = State#state.proc_opened - 1}};
 handle_cast(_Request, State) ->
@@ -193,3 +186,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+
+append_task(Task, Map) ->
+    maps:put(Task#task.id, Task, Map).
+
+
+new_worker(Task, SupervisorPID, ServerPID) ->
+    C = {Task#task.id, {roh_worker, start_link, [{Task, ServerPID}]},
+        transient, 5000, worker, [roh_worker]},
+    supervisor:start_child(SupervisorPID, C).
+
+stop_worker(ID, ServerPID) ->
+    supervisor:terminate_child(ServerPID, ID),
+    supervisor:delete_child(ServerPID, ID).

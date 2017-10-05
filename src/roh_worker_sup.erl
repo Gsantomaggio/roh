@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(roh_worker_sup).
 -author("gabriele").
+-include("../include/roh_headers.hrl").
+
 
 -behaviour(supervisor).
 
@@ -20,4 +22,7 @@ start_link() ->
     supervisor:start_link(?SERVER, []).
 
 init([]) ->
-    {ok, { {one_for_all, 0, 1}, []} }.
+    {ok, {{one_for_all, 0, 1}, []}}.
+
+
+

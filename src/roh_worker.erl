@@ -69,6 +69,7 @@ init({Task, Sender}) ->
 start_task(Task, Sender) ->
     gen_server:cast(self(), {start, Task, Sender}).
 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -84,8 +85,7 @@ start_task(Task, Sender) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_call({start, ID, Task, Sender}, _From, State) ->
-    io:format("working on ~w ~s ~w ~n", [ID, Task, Sender]),
+handle_call({start, _ID, _Task, _Sender}, _From, State) ->
     {reply, ok, State}.
 
 %%--------------------------------------------------------------------
@@ -100,8 +100,8 @@ handle_call({start, ID, Task, Sender}, _From, State) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
 handle_cast({start, Task = #task{id = UUID}, Sender}, State) ->
-    io:format("working on ~w ~s ~w ~n", [UUID, Task#task.body, Sender]),
-    timer:sleep(5000),
+    roh_console_log:info("Working on UUID: ~w Body: ~s SenderPID:~w MyPID:~w ~n", [UUID, Task#task.body, Sender, self()]),
+    timer:sleep(10),
     gen_server:cast(Sender, {remove_task, UUID}),
     {noreply, State#state{status = finished}}.
 
@@ -156,3 +156,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+
+
