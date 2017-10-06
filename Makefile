@@ -38,6 +38,9 @@ docs:
 test: 
 	@$(REBAR3) do ct, cover
 
+sh_test:
+	@$(REBAR3) as test shell
+
 release:
 	@$(REBAR3) release
 

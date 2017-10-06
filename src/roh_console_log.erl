@@ -15,7 +15,7 @@
 
 
 write_message(Msg, Params) ->
-    io:format(Msg, Params).
+    io:format(Msg ++ "~n", Params).
 
 info(Msg, Params) ->
     write_message("[INFO] " ++ Msg, Params),

@@ -101,9 +101,15 @@ handle_call({start, _ID, _Task, _Sender}, _From, State) ->
     {stop, Reason :: term(), NewState :: #state{}}).
 handle_cast({start, Task = #task{id = UUID}, Sender}, State) ->
     roh_console_log:info("Working on UUID: ~w Body: ~s SenderPID:~w MyPID:~w ~n", [UUID, Task#task.body, Sender, self()]),
-    timer:sleep(10),
-    gen_server:cast(Sender, {remove_task, UUID}),
-    {noreply, State#state{status = finished}}.
+    timer:sleep(500),
+%%    A = ciao,
+%%    true = A,
+%%    gen_server:cast(Sender, {remove_task, self()}),
+    {stop, normal, State};
+handle_cast(stop, State) ->
+    roh_console_log:debug("aaaaaaaaasdsadasdasdasdsdaasdas"),
+    {stop, normal, State}.
+
 
 %%--------------------------------------------------------------------
 %% @private
