@@ -100,8 +100,9 @@ handle_call({start, _ID, _Task, _Sender}, _From, State) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
 handle_cast({start, Task = #task{id = UUID}, Sender}, State) ->
+    timer:sleep(200 + rand:uniform(1)),
     roh_console_log:info("Working on UUID: ~w Body: ~s SenderPID:~w MyPID:~w ~n", [UUID, Task#task.body, Sender, self()]),
-    timer:sleep(500),
+
 %%    A = ciao,
 %%    true = A,
 %%    gen_server:cast(Sender, {remove_task, self()}),

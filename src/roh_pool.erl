@@ -27,12 +27,11 @@
     stress/1]).
 
 -define(SERVER, ?MODULE).
--define(MAX_PROCESSES, 30).
+-define(MAX_PROCESSES, 3).
 
 
 -record(state, {
     supervisor,
-    proc_opened = 0,
     running_workers = maps:new(),
     waiting_queue = queue:new(),
     global = 0}).
@@ -44,7 +43,7 @@
 
 stress(N) when N > 0 ->
     add_task(),
-    timer:sleep(200),
+%%    timer:sleep(200),
     stress(N - 1);
 stress(_N) -> ok.
 
@@ -93,11 +92,24 @@ init([]) ->
     {ok, #state{supervisor = PID}}.
 
 
-maybe_run_next_Q(QWQ, Sup, MRW) ->
-    case queue:out(QWQ) of
-        {empty, QWQ1} -> {MRW, QWQ1};
-        {{value, Task}, QWQ2} -> {add_new_worker_task(Task, Sup, MRW), QWQ2}
+is_the_limit_reached(MRW) ->
+    case maps:size(MRW) of
+        Value when Value < ?MAX_PROCESSES -> false;
+        Value when Value >= ?MAX_PROCESSES -> true
     end.
+
+
+
+maybe_run_next_Q(QWQ, Sup, MRW) ->
+    case is_the_limit_reached(MRW) of
+        false -> case queue:out(QWQ) of
+                     {empty, QWQ1} -> {MRW, QWQ1};
+                     {{value, Task}, QWQ2} ->
+                         {add_new_worker_task(Task, Sup, MRW), QWQ2}
+                 end;
+        true -> {MRW, QWQ}
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,14 +127,17 @@ maybe_run_next_Q(QWQ, Sup, MRW) ->
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
 handle_call({add_task, Task}, _From,
-    State = #state{proc_opened = PO, running_workers = MRW, supervisor = Sup}) when PO < ?MAX_PROCESSES ->
-    MRW2 = add_new_worker_task(Task, Sup, MRW),
-    {reply, ok, State#state{running_workers = MRW2, proc_opened = maps:size(MRW2),
-        global = State#state.global + 1}};
-handle_call({add_task, Task}, _From, State = #state{waiting_queue = QWQ}) ->
-    QWQ2 = queue:in(Task, QWQ),
-    roh_console_log:info("Added in waiting list, current size: ~w ~n:", [queue:len(QWQ2)]),
-    {reply, ok, State#state{waiting_queue = QWQ2, global = State#state.global + 1}};
+    State = #state{running_workers = MRW, waiting_queue = QWQ, supervisor = Sup}) ->
+
+    case is_the_limit_reached(MRW) of
+        false -> MRW2 = add_new_worker_task(Task, Sup, MRW),
+            {reply, ok, State#state{running_workers = MRW2, global = State#state.global + 1}};
+        true ->
+            QWQ2 = queue:in(Task, QWQ),
+            roh_console_log:info("Added in waiting list, current size: ~w", [queue:len(QWQ2)]),
+            {reply, ok, State#state{waiting_queue = QWQ2, global = State#state.global + 1}}
+    end;
+
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -161,11 +176,11 @@ handle_cast(_Request, State) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
 handle_info({'EXIT', WorkerPid, Reason}, State = #state{running_workers = MRW, waiting_queue = QWQ, supervisor = Sup, global = G}) ->
-    {MRW2, QWQ2} = maybe_run_next_Q(QWQ, Sup, MRW),
-    MRW3 = maps:remove(WorkerPid, MRW2),
+    MRW2 = maps:remove(WorkerPid, MRW),
+    {MRW3, QWQ2} = maybe_run_next_Q(QWQ, Sup, MRW2),
     stop_worker(WorkerPid, Sup),
-    roh_console_log:info("EXIT: Removing1 task exit, Waiting queue: ~w proc_opened:~w Child PID: ~w len: ~w Total:~w Reason: ~w", [queue:len(QWQ2), State#state.proc_opened, WorkerPid, maps:size(MRW3), G, Reason]),
-    {noreply, State#state{running_workers = MRW3, waiting_queue = QWQ2, proc_opened = maps:size(MRW3)}};
+    roh_console_log:info("EXIT: Removing task, Waiting queue: ~w  Child PID: ~w Runnig Workers: ~w Total:~w Reason: ~w, erlang proccesses ~w", [queue:len(QWQ2), WorkerPid, maps:size(MRW3), G, Reason, length(processes())]),
+    {noreply, State#state{running_workers = MRW3, waiting_queue = QWQ2}};
 handle_info(_Request, State) ->
     {noreply, State}.
 
