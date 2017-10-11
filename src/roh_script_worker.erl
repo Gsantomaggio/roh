@@ -4,17 +4,18 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 03. Oct 2017 17:36
+%%% Created : 09. Oct 2017 09:43
 %%%-------------------------------------------------------------------
--module(roh_pool).
+-module(roh_script_worker).
 -author("gabriele").
 
 -behaviour(gen_server).
-
+-behaviour(roh_worker).
 
 -include("../include/roh_headers.hrl").
+
 %% API
--export([start_link/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -22,41 +23,15 @@
     handle_cast/2,
     handle_info/2,
     terminate/2,
-    code_change/3,
-    add_task/0,
-    stress/1]).
+    code_change/3]).
 
 -define(SERVER, ?MODULE).
--define(MAX_PROCESSES, 200).
 
-
--record(state, {
-    supervisor,
-    running_workers = maps:new(),
-    waiting_queue = queue:new(),
-    worker_module,
-    global = 0}).
+-record(state, {}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-
-stress(N) when N > 0 ->
-    add_task(),
-%%    timer:sleep(200),
-    stress(N - 1);
-stress(_N) -> ok.
-
-
-add_task() ->
-    UUID = erlang:phash2({rand:uniform(500), now()}),
-    Task = #task{id = UUID, body = "{\"name\":\"test_json\"}", time_start = now()},
-    R = add_task(Task),
-    R.
-
-add_task(Task) ->
-    gen_server:call(?SERVER, {add_task, Task}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -64,10 +39,10 @@ add_task(Task) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(start_link(WorkerModule :: term()) ->
+-spec(start_link() ->
     {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
-start_link(WorkerModule) ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [WorkerModule], []).
+start_link() ->
+    gen_server:start_link(?MODULE, [], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -87,29 +62,8 @@ start_link(WorkerModule) ->
 -spec(init(Args :: term()) ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
-init([WorkerModule]) ->
-    process_flag(trap_exit, true),
-    {ok, PID} = roh_worker_sup:start_link(WorkerModule),
-    {ok, #state{supervisor = PID, worker_module = WorkerModule}}.
-
-
-is_watermark_processes(MRW) ->
-    case maps:size(MRW) of
-        Value when Value < ?MAX_PROCESSES -> false;
-        Value when Value >= ?MAX_PROCESSES -> true
-    end.
-
-
-
-maybe_run_next_Q(QWQ, Sup, MRW) ->
-    case is_watermark_processes(MRW) of
-        true -> {MRW, QWQ};
-        false -> case queue:out(QWQ) of
-                     {empty, QWQ1} -> {MRW, QWQ1};
-                     {{value, Task}, QWQ2} ->
-                         {execute_new_worker(Task, Sup, MRW), QWQ2}
-                 end
-    end.
+init([]) ->
+    {ok, #state{}}.
 
 
 %%--------------------------------------------------------------------
@@ -127,18 +81,6 @@ maybe_run_next_Q(QWQ, Sup, MRW) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_call({add_task, Task}, _From,
-    State = #state{running_workers = MRW, waiting_queue = QWQ, supervisor = Sup}) ->
-
-    case is_watermark_processes(MRW) of
-        true ->
-            QWQ2 = queue:in(Task, QWQ),
-            roh_console_log:info("Added in waiting list, current size: ~w", [queue:len(QWQ2)]),
-            {reply, ok, State#state{waiting_queue = QWQ2, global = State#state.global + 1}};
-        false -> MRW2 = execute_new_worker(Task, Sup, MRW),
-            {reply, ok, State#state{running_workers = MRW2, global = State#state.global + 1}}
-    end;
-
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -153,8 +95,10 @@ handle_call(_Request, _From, State) ->
     {noreply, NewState :: #state{}} |
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_cast(_Request, State) ->
-    {noreply, State}.
+handle_cast({start, _Task = #task{id = UUID}, _Sender}, State) ->
+    roh_console_log:info("Script worker ~w", [UUID]),
+    timer:sleep(100),
+    {stop, normal, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -170,13 +114,7 @@ handle_cast(_Request, State) ->
     {noreply, NewState :: #state{}} |
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_info({'EXIT', WorkerPid, Reason}, State = #state{running_workers = MRW, waiting_queue = QWQ, supervisor = Sup, global = G}) ->
-    MRW2 = maps:remove(WorkerPid, MRW),
-    {MRW3, QWQ2} = maybe_run_next_Q(QWQ, Sup, MRW2),
-    stop_worker(WorkerPid, Sup),
-    roh_console_log:info("EXIT: Removing task, Waiting queue: ~w  Child PID: ~w Runnig Workers: ~w Total:~w Reason: ~w, erlang proccesses ~w", [queue:len(QWQ2), WorkerPid, maps:size(MRW3), G, Reason, length(processes())]),
-    {noreply, State#state{running_workers = MRW3, waiting_queue = QWQ2}};
-handle_info(_Request, State) ->
+handle_info(_Info, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -193,6 +131,7 @@ handle_info(_Request, State) ->
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
 terminate(_Reason, _State) ->
+%%    roh_console_log:info("CLosed ~w",[Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -212,30 +151,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-
-
-execute_new_worker(Task, Sup, MRW) ->
-    WPID = new_worker(Sup),
-    M = move_worker_to_runners(MRW, WPID, Task),
-    send_async_task(WPID, Task, Sup),
-    M.
-
-
-move_worker_to_runners(MRW, WorkerPID, Task) ->
-    maps:put(WorkerPID, Task, MRW).
-
-send_async_task(WorkerPID, Task, Sup) ->
-    gen_server:cast(WorkerPID, {start, Task, Sup}).
-
-
-new_worker(Sup) ->
-    {ok, WorkerPID} = supervisor:start_child(Sup, []),
-    link(WorkerPID),
-    WorkerPID.
-
-
-stop_worker(ID, ServerPID) ->
-    supervisor:terminate_child(ServerPID, ID),
-    unlink(ID),
-    supervisor:delete_child(ServerPID, ID).

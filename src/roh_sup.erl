@@ -29,7 +29,7 @@ start_link() ->
 %% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
     RestartStrategy = {one_for_one, 10, 60},
-    ChildSpec = [{roh_pool, {roh_pool, start_link, []},
+    ChildSpec = [{roh_pool, {roh_pool, start_link, [roh_script_worker]},
         permanent, brutal_kill, worker, [roh_pool]}],
 
     {ok, {RestartStrategy, ChildSpec}}.

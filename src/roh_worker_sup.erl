@@ -18,13 +18,13 @@
 -define(SHUTDOWN_TIMEOUT, 5000).
 -define(WORKER(I), {I, {I, start_link, []}, temporary, ?SHUTDOWN_TIMEOUT, worker, [I]}).
 
--export([start_link/0, init/1]).
+-export([start_link/1, init/1]).
 
-start_link() ->
-    supervisor:start_link(?MODULE, []).
+start_link(WorkerModule) ->
+    supervisor:start_link(?MODULE, [WorkerModule]).
 
-init([]) ->
-    Child = ?WORKER(roh_worker),
+init([WorkerModule]) ->
+    Child = ?WORKER(WorkerModule),
     {ok, {{simple_one_for_one, 0, 1}, [Child]}}.
 
 

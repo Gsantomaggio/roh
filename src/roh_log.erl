@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 05. Oct 2017 15:12
 %%%-------------------------------------------------------------------
--module(roh_log_interface).
+-module(roh_log).
 -author("gabriele").
 
 %% API

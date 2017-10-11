@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(roh_console_log).
 -author("gabriele").
--behavior(roh_log_interface).
+-behavior(roh_log).
 
 %% API
 -export([info/2, debug/2, warning/2, error/2, level/1]).
