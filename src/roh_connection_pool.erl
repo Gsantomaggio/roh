@@ -4,15 +4,15 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 11. Oct 2017 22:48
+%%% Created : 12. Oct 2017 16:42
 %%%-------------------------------------------------------------------
--module(roh_worker).
+-module(roh_connection_pool).
 -author("gabriele").
 
--behaviour(gen_server).
 
 -include_lib("../include/roh_headers.hrl").
 
+-behaviour(gen_server).
 
 %% API
 -export([start_link/0]).
@@ -23,16 +23,38 @@
     handle_cast/2,
     handle_info/2,
     terminate/2,
-    code_change/3]).
+    code_change/3,
+    get_next_channel/0]).
 
 -define(SERVER, ?MODULE).
 
--record(state, {}).
+-record(state, {current_channel = 1, connections = [], channels = []}).
 
--callback handle_cast({start, Task :: #task{}, Sender :: pid()}, State :: term()) -> {stop, Result :: term(), State :: term()}.
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+
+get_next_channel() ->
+    gen_server:call(?SERVER, {get_next_channel}).
+
+
+
+
+internal_setup_channels(N) when N =< 0 ->
+    [];
+internal_setup_channels(N) when N =< ?CHANNELS_FOR_CONNECTION ->
+    lists:append(internal_setup_channels(N - 1), [{channelid, N}]).
+
+
+
+internal_setup_connections(N) when N =< 0 ->
+    [];
+internal_setup_connections(N) when N =< ?CONNECTIONS_SIZE ->
+    L = internal_setup_channels(?CHANNELS_FOR_CONNECTION),
+    R = lists:append(internal_setup_connections(N - 1), [{N, L}]),
+    R.
+
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -64,7 +86,9 @@ start_link() ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    {ok, #state{}}.
+    L = internal_setup_connections(?CONNECTIONS_SIZE),
+    roh_console_log:info("internal_setup_connections number: ~w", [L]),
+    {ok, #state{connections = L}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -81,8 +105,22 @@ init([]) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_call(_Request, _From, State) ->
+handle_call({get_next_channel}, _From, State = #state{current_channel = CCh, channels = Ch}) when CCh < ?CHANNELS_SIZE ->
+    NextChannel = lists:nth(CCh, Ch),
+    roh_console_log:info("get_next_channel number: ~w", [NextChannel]),
+    {reply, NextChannel, State#state{current_channel = CCh + 1}};
+handle_call({get_next_channel}, _From, State = #state{channels = Ch}) ->
+    NextChannel = lists:nth(1, Ch),
+    roh_console_log:info("get_next_channel_0 number: ~w", [NextChannel]),
+    {reply, NextChannel, State#state{current_channel = 1}};
+handle_call({setup_connections, N}, _From, State = #state{connections = Cn}) ->
+    roh_console_log:info("handle_call number: ~w", [N]),
+    L1 = lists:append({id = N}, Cn),
+    {reply, ok, State#state{connections = L1}};
+handle_call(Request, _From, State) ->
+    roh_console_log:info("Request Request: ~w", [Request]),
     {reply, ok, State}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -95,10 +133,6 @@ handle_call(_Request, _From, State) ->
     {noreply, NewState :: #state{}} |
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_cast({start, _Task = #task{id = UUID}, _Sender}, State) ->
-    roh_console_log:info("Script worker ~w", [UUID]),
-    timer:sleep(100),
-    {stop, normal, State};
 handle_cast(_Request, State) ->
     {noreply, State}.
 

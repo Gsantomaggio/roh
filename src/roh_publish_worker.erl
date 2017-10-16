@@ -6,13 +6,12 @@
 %%% @end
 %%% Created : 09. Oct 2017 09:43
 %%%-------------------------------------------------------------------
--module(roh_script_worker).
+-module(roh_publish_worker).
 -author("gabriele").
+-include_lib("../include/roh_headers.hrl").
 
--behaviour(gen_server).
 -behaviour(roh_worker).
 
--include("../include/roh_headers.hrl").
 
 %% API
 -export([start_link/0]).

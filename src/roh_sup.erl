@@ -7,6 +7,8 @@
 
 -behaviour(supervisor).
 
+-include_lib("../include/roh_headers.hrl").
+
 %% API
 -export([start_link/0]).
 
@@ -22,18 +24,9 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-%%====================================================================
-%% Supervisor callbacks
-%%====================================================================
-
-%% Child :: {Id,StartFunc,Restart,Shutdown,Type,Modules}
 init([]) ->
     RestartStrategy = {one_for_one, 10, 60},
-    ChildSpec = [{roh_pool, {roh_pool, start_link, [roh_script_worker]},
+    ChildSpec = [{roh_pool, {roh_pool, start_link, [roh_publish_worker]},
         permanent, brutal_kill, worker, [roh_pool]}],
 
     {ok, {RestartStrategy, ChildSpec}}.
-
-%%====================================================================
-%% Internal functions
-%%====================================================================

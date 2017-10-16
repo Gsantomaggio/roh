@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 
--include("../include/roh_headers.hrl").
+-include_lib("../include/roh_headers.hrl").
 %% API
 -export([start_link/1]).
 
@@ -27,7 +27,6 @@
     stress/1]).
 
 -define(SERVER, ?MODULE).
--define(MAX_PROCESSES, 200).
 
 
 -record(state, {
@@ -35,6 +34,7 @@
     running_workers = maps:new(),
     waiting_queue = queue:new(),
     worker_module,
+    connection_pool,
     global = 0}).
 
 %%%===================================================================
@@ -89,14 +89,15 @@ start_link(WorkerModule) ->
     {stop, Reason :: term()} | ignore).
 init([WorkerModule]) ->
     process_flag(trap_exit, true),
+    {ok, ConnectionPoolPID} = roh_connection_pool:start_link(),
     {ok, PID} = roh_worker_sup:start_link(WorkerModule),
-    {ok, #state{supervisor = PID, worker_module = WorkerModule}}.
+    {ok, #state{supervisor = PID, worker_module = WorkerModule, connection_pool = ConnectionPoolPID}}.
 
 
 is_watermark_processes(MRW) ->
     case maps:size(MRW) of
-        Value when Value < ?MAX_PROCESSES -> false;
-        Value when Value >= ?MAX_PROCESSES -> true
+        Value when Value < ?CHANNELS_SIZE -> false;
+        Value when Value >= ?CHANNELS_SIZE -> true
     end.
 
 
@@ -128,14 +129,16 @@ maybe_run_next_Q(QWQ, Sup, MRW) ->
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
 handle_call({add_task, Task}, _From,
-    State = #state{running_workers = MRW, waiting_queue = QWQ, supervisor = Sup}) ->
+    State = #state{running_workers = MRW, waiting_queue = QWQ, supervisor = Sup, connection_pool = CP}) ->
 
     case is_watermark_processes(MRW) of
         true ->
             QWQ2 = queue:in(Task, QWQ),
             roh_console_log:info("Added in waiting list, current size: ~w", [queue:len(QWQ2)]),
             {reply, ok, State#state{waiting_queue = QWQ2, global = State#state.global + 1}};
-        false -> MRW2 = execute_new_worker(Task, Sup, MRW),
+        false -> Channel = gen_server:call(CP, {get_next_channel}),
+            roh_console_log:info("Channel number: ~w", [Channel]),
+            MRW2 = execute_new_worker(Task, Sup, MRW),
             {reply, ok, State#state{running_workers = MRW2, global = State#state.global + 1}}
     end;
 
@@ -216,9 +219,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 execute_new_worker(Task, Sup, MRW) ->
-    WPID = new_worker(Sup),
-    M = move_worker_to_runners(MRW, WPID, Task),
-    send_async_task(WPID, Task, Sup),
+    WorkerPID = new_worker(Sup),
+    M = move_worker_to_runners(MRW, WorkerPID, Task),
+    send_async_task(WorkerPID, Task, Sup),
     M.
 
 
