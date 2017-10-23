@@ -26,6 +26,7 @@
     stop_tasks/0]).
 
 -define(SERVER, ?MODULE).
+-define(MAX_TASKS, 20).
 
 
 -record(state, {
@@ -84,8 +85,8 @@ init([WorkerModule]) ->
 
 is_watermark_processes(MRW) ->
     case maps:size(MRW) of
-        Value when Value < ?CHANNELS_SIZE -> false;
-        Value when Value >= ?CHANNELS_SIZE -> true
+        Value when Value < ?MAX_TASKS -> false;
+        Value when Value >= ?MAX_TASKS -> true
     end.
 
 

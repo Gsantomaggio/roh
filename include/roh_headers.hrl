@@ -16,7 +16,4 @@
 -define(SHUTDOWN_TIMEOUT, 5000).
 -define(WORKER(I), {I, {I, start_link, []}, temporary, ?SHUTDOWN_TIMEOUT, worker, [I]}).
 
--define(CONNECTIONS_SIZE, 10).
--define(CHANNELS_FOR_CONNECTION, 2).
--define(CHANNELS_SIZE, ?CONNECTIONS_SIZE * ?CHANNELS_FOR_CONNECTION).
 
