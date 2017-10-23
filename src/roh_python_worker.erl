@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 09. Oct 2017 09:43
 %%%-------------------------------------------------------------------
--module(roh_publish_worker).
+-module(roh_python_worker).
 -author("gabriele").
 -include_lib("../include/roh_headers.hrl").
 
@@ -26,7 +26,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {}).
+-record(state, {python_instance = no_istance, current_task = no_task}).
 
 %%%===================================================================
 %%% API
@@ -62,7 +62,8 @@ start_link() ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    {ok, #state{}}.
+    {ok, PythonInstance} = python:start([{python_path, "/Users/gabriele/tests/federations/"}, {python, "python"}]),
+    {ok, #state{python_instance = PythonInstance}}.
 
 
 %%--------------------------------------------------------------------
@@ -94,10 +95,16 @@ handle_call(_Request, _From, State) ->
     {noreply, NewState :: #state{}} |
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_cast({start, _Task = #task{id = UUID}, _Sender}, State) ->
-    roh_console_log:info("Script worker ~w", [UUID]),
-    timer:sleep(100),
-    {stop, normal, State}.
+handle_cast({start, Task = #task{id = UUID, module_start  = M, function_start = F, parameters_start = Prs}, _Sender}, State = #state{python_instance = PythonInstance}) ->
+    roh_console_log:info("Script worker ~w, function ~s, parameters ~w", [UUID, F, Prs]),
+    python:call(PythonInstance, M, F, Prs),
+    {noreply, State#state{current_task = Task}};
+handle_cast({stop}, State = #state{python_instance = PythonInstance, current_task = CT}) ->
+    roh_console_log:info("Stopping... ~w", [CT#task.id]),
+    python:call(PythonInstance, CT#task.module_stop, CT#task.function_stop, CT#task.parameters_stop),
+    python:stop(PythonInstance),
+    {stop, normal, State#state{python_instance = no_instance, current_task = no_task}}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -129,9 +136,14 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
-terminate(_Reason, _State) ->
-%%    roh_console_log:info("CLosed ~w",[Reason]),
+terminate(Reason, #state{python_instance = P}) when P =/= no_istance andalso is_pid(P) ->
+    Stop_Result = python:stop(P),
+    roh_console_log:info("Closed ~w, Stop Result ~s", [Reason, Stop_Result]),
+    ok;
+terminate(Reason, _State) ->
+    roh_console_log:info("Stopped normally ~w", [Reason]),
     ok.
+
 
 %%--------------------------------------------------------------------
 %% @private

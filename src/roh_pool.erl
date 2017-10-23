@@ -23,8 +23,9 @@
     handle_info/2,
     terminate/2,
     code_change/3,
-    add_task/0,
-    stress/1]).
+    add_consumer/1,
+    stop_task/0,
+    a/0]).
 
 -define(SERVER, ?MODULE).
 
@@ -34,7 +35,6 @@
     running_workers = maps:new(),
     waiting_queue = queue:new(),
     worker_module,
-    connection_pool,
     global = 0}).
 
 %%%===================================================================
@@ -42,21 +42,23 @@
 %%%===================================================================
 
 
-stress(N) when N > 0 ->
-    add_task(),
-%%    timer:sleep(200),
-    stress(N - 1);
-stress(_N) -> ok.
+a() ->
+    add_consumer(5672),
+    add_consumer(5673).
 
-
-add_task() ->
+add_consumer(Port) ->
     UUID = erlang:phash2({rand:uniform(500), now()}),
-    Task = #task{id = UUID, body = "{\"name\":\"test_json\"}", time_start = now()},
+    Task = #task{id = UUID, module_start = consumer, function_start = start, parameters_start = [localhost, Port],
+        module_stop = consumer, function_stop = stop, parameters_stop = []},
     R = add_task(Task),
     R.
 
 add_task(Task) ->
     gen_server:call(?SERVER, {add_task, Task}).
+
+stop_task() ->
+    gen_server:call(?SERVER, {stop_all_tasks}).
+
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -89,9 +91,8 @@ start_link(WorkerModule) ->
     {stop, Reason :: term()} | ignore).
 init([WorkerModule]) ->
     process_flag(trap_exit, true),
-    {ok, ConnectionPoolPID} = roh_connection_pool:start_link(),
     {ok, PID} = roh_worker_sup:start_link(WorkerModule),
-    {ok, #state{supervisor = PID, worker_module = WorkerModule, connection_pool = ConnectionPoolPID}}.
+    {ok, #state{supervisor = PID, worker_module = WorkerModule}}.
 
 
 is_watermark_processes(MRW) ->
@@ -129,19 +130,22 @@ maybe_run_next_Q(QWQ, Sup, MRW) ->
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
 handle_call({add_task, Task}, _From,
-    State = #state{running_workers = MRW, waiting_queue = QWQ, supervisor = Sup, connection_pool = CP}) ->
+    State = #state{running_workers = MRW, waiting_queue = QWQ, supervisor = Sup}) ->
 
     case is_watermark_processes(MRW) of
         true ->
             QWQ2 = queue:in(Task, QWQ),
             roh_console_log:info("Added in waiting list, current size: ~w", [queue:len(QWQ2)]),
             {reply, ok, State#state{waiting_queue = QWQ2, global = State#state.global + 1}};
-        false -> Channel = gen_server:call(CP, {get_next_channel}),
-            roh_console_log:info("Channel number: ~w", [Channel]),
-            MRW2 = execute_new_worker(Task, Sup, MRW),
+        false -> MRW2 = execute_new_worker(Task, Sup, MRW),
             {reply, ok, State#state{running_workers = MRW2, global = State#state.global + 1}}
     end;
 
+handle_call({stop_all_tasks}, _From,
+    State = #state{running_workers = MRW, waiting_queue = QWQ, supervisor = Sup}) ->
+    L = maps:to_list(MRW),
+    [gen_server:cast(K, {stop}) || {K, _} <- L],
+    {reply, ok, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 

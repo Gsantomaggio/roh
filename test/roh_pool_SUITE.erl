@@ -20,10 +20,6 @@ init() ->
 
 test_worker_script(_Config) ->
     {ok, PID} = init(),
-    {ok, ChildPID} = supervisor:start_child(PID, []),
-
-
-
 
     1 = 1.
 

@@ -8,7 +8,10 @@
 %%%-------------------------------------------------------------------
 -author("gabriele").
 
--record(task, {id, body, time_start, status}).
+-record(task, {id,
+    module_start, function_start, parameters_start = [],
+    module_stop, function_stop, parameters_stop = [],
+    time_start, status}).
 
 -define(SHUTDOWN_TIMEOUT, 5000).
 -define(WORKER(I), {I, {I, start_link, []}, temporary, ?SHUTDOWN_TIMEOUT, worker, [I]}).

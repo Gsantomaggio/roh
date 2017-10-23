@@ -46,3 +46,6 @@ release:
 
 run: release
 	_build/default/rel/roh/bin/roh-0.0.1 console
+
+kills:
+	kill -9 $(ps aux | grep python | awk '{print $2}')
