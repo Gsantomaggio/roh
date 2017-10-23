@@ -8,12 +8,14 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/2, stop/1, start/0]).
 
 %%====================================================================
 %% API
 %%====================================================================
 
+start() ->
+    start(normal, normal).
 
 start(_StartType, _StartArgs) ->
     roh_sup:start_link().

@@ -13,17 +13,25 @@
 
 
 %% API
--export([a/0, add_consumer/1]).
+-export([lc/0, add_local_consumer/1, add_cluster_consumer/1]).
 
 
-a() ->
-    add_consumer(5672),
-    add_consumer(5673).
+lc() ->
+    add_local_consumer(5672),
+    add_local_consumer(5673).
 
-add_consumer(Port) ->
+getTask(Port) ->
     UUID = erlang:phash2({rand:uniform(500), now()}),
     Task = #task{id = UUID, module_start = consumer, function_start = start, parameters_start = [localhost, Port],
         module_stop = consumer, function_stop = stop, parameters_stop = []},
-    R = roh_pool:add_task(Task),
-    R.
+    Task.
+
+add_local_consumer(Port) ->
+    roh_pool:add_task(getTask(Port)).
+
+add_cluster_consumer(Port) ->
+    gen_server:multi_call([node() | nodes()], roh_pool, {add_task, getTask(Port)}, 5000).
+
+
+
 

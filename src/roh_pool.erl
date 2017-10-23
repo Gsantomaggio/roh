@@ -23,7 +23,7 @@
     handle_info/2,
     terminate/2,
     code_change/3,
-    stop_task/0]).
+    stop_tasks/0]).
 
 -define(SERVER, ?MODULE).
 
@@ -43,7 +43,7 @@
 add_task(Task) ->
     gen_server:call(?SERVER, {add_task, Task}).
 
-stop_task() ->
+stop_tasks() ->
     gen_server:call(?SERVER, {stop_all_tasks}).
 
 
