@@ -14,7 +14,7 @@
 
 -include_lib("../include/roh_headers.hrl").
 %% API
--export([start_link/1]).
+-export([start_link/1, add_task/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -23,9 +23,7 @@
     handle_info/2,
     terminate/2,
     code_change/3,
-    add_consumer/1,
-    stop_task/0,
-    a/0]).
+    stop_task/0]).
 
 -define(SERVER, ?MODULE).
 
@@ -41,17 +39,6 @@
 %%% API
 %%%===================================================================
 
-
-a() ->
-    add_consumer(5672),
-    add_consumer(5673).
-
-add_consumer(Port) ->
-    UUID = erlang:phash2({rand:uniform(500), now()}),
-    Task = #task{id = UUID, module_start = consumer, function_start = start, parameters_start = [localhost, Port],
-        module_stop = consumer, function_stop = stop, parameters_stop = []},
-    R = add_task(Task),
-    R.
 
 add_task(Task) ->
     gen_server:call(?SERVER, {add_task, Task}).

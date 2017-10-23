@@ -62,7 +62,7 @@ start_link() ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    {ok, PythonInstance} = python:start([{python_path, "/Users/gabriele/tests/federations/"}, {python, "python"}]),
+    {ok, PythonInstance} = python:start([{python_path, "python_scripts/"}, {python, "python"}]),
     {ok, #state{python_instance = PythonInstance}}.
 
 
