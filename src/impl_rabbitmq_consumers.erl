@@ -18,7 +18,9 @@
 
 lc() ->
     add_local_consumer(5672),
-    add_local_consumer(5673).
+    add_local_consumer(5673),
+    add_local_consumer(6672).
+
 
 getTask(Port) ->
     UUID = erlang:phash2({rand:uniform(500), now()}),

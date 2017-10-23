@@ -14,10 +14,8 @@ def on_message(ch, method, properties, body):
     time.sleep(0.3)
     global c
     c += 1
-    print "****** Message received! on " + description + "********\n"
-    print body + "\n"
-    print "***************************** -  received:" + str(c) + "\n"
-    print " "
+    print "Received on " + description + " - bd:" + body + " - received:" + str(
+        c) + "\n"
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
