@@ -21,7 +21,8 @@ def on_message(ch, method, properties, body):
 
 
 def threaded_rmq(channel):
-    result = channel.queue_declare(queue='test_queue')
+    result = channel.queue_declare(queue='test_queue',
+                                   arguments={"x-expires":20000})
     queue_name = result.method.queue
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(on_message, queue=queue_name,
@@ -53,10 +54,10 @@ def stop():
 
 if __name__ == "__main__":
     print 'Argument List:', str(sys.argv)
-    rabbitmq_host = sys.argv[1];
+    rabbitmq_host = sys.argv[1]
     global rabbitmq_port
-    rabbitmq_port = int(sys.argv[2]);
-    start(rabbitmq_host, rabbitmq_port);
+    rabbitmq_port = int(sys.argv[2])
+    start(rabbitmq_host, rabbitmq_port)
     var = raw_input("Any key to stop")
     print "Stopping..."
     stop()
