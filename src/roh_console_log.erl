@@ -11,7 +11,7 @@
 -behavior(roh_log).
 
 %% API
--export([info/2, debug/2, warning/2, error/2, level/1]).
+-export([info/2, debug/2, warning/2, error/2, level/1, out/2]).
 
 
 write_message(Msg, Params) ->
@@ -30,6 +30,9 @@ warning(Msg, Params) ->
 
 error(Msg, Params) ->
     write_message("[ERROR] " ++ Msg, Params),
+    ok.
+out(Msg, Params) ->
+    write_message(Msg, Params),
     ok.
 
 

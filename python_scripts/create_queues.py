@@ -2,34 +2,7 @@
 import pika
 import sys
 import time
-from threading import Thread
-
-c = 0
-connection = None
-channel = None
-description = None
-
-
-def on_message(ch, method, properties, body):
-    time.sleep(0.3)
-    global c
-    c += 1
-    print "Received on " + description + " - bd:" + body + " - received:" + str(
-        c) + "\n"
-    ch.basic_ack(delivery_tag=method.delivery_tag)
-
-
-def threaded_rmq(channel_):
-    result = channel_.queue_declare(queue='test_queue', durable = True)
-                                    # ,
-                                    # arguments={"x-expires": 30000})
-    queue_name = result.method.queue
-    channel_.queue_bind(exchange="chat", queue=queue_name, routing_key="")
-    channel_.basic_qos(prefetch_count=1)
-    channel_.basic_consume(on_message, queue=queue_name,
-                           no_ack=False)
-    channel_.start_consuming()
-
+import uuid
 
 def start(rabbitmq_host, rabbitmq_port):
     credentials = pika.PlainCredentials('test', "test")
@@ -44,8 +17,11 @@ def start(rabbitmq_host, rabbitmq_port):
     global channel
     channel = connection.channel()
 
-    thread_rmq = Thread(target=threaded_rmq, args=(channel,))
-    thread_rmq.start()
+    for x in xrange(1,5000):
+        result = channel.queue_declare(queue=str(uuid.uuid4()) + "_" + str(rabbitmq_port), durable = True,
+                                     arguments={"x-expires": 1200000})
+
+    print "Finished: " + description
 
 
 def stop():
