@@ -16,7 +16,7 @@
 -callback debug(Msg::string(),Params::list()) -> ok.
 -callback warning(Msg::string(),Params::list()) -> ok.
 -callback error(Msg::string(),Params::list()) -> ok.
--callback out(Msg::atom()) -> ok.
+-callback out(Msg::atom(),Params::list()) -> ok.
 -callback level(Msg::atom()) -> ok.
 
 

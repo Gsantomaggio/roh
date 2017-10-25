@@ -41,7 +41,7 @@ test:
 sh_test:
 	@$(REBAR3) as test shell --sname roh
 
-release:
+release: $(REBAR3)
 	@$(REBAR3) release
 
 run: release
