@@ -14,7 +14,7 @@
 
 -include_lib("../include/roh_headers.hrl").
 %% API
--export([start_link/1, add_task/1, status/0, stop_task/1]).
+-export([start_link/1, add_task/1, stop_task/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -49,10 +49,6 @@ stop_tasks() ->
 
 stop_task(ID) ->
     gen_server:call(?SERVER, {stop_task, ID}).
-
-
-status() ->
-    roh_console_log:out("Node:~w,  Running tasks: [~s]", [node(), gen_server:call(?SERVER, {status})]).
 
 
 %%--------------------------------------------------------------------
@@ -142,13 +138,13 @@ handle_call({stop_all_tasks}, _From,
     {reply, ok, State};
 handle_call({stop_task, ID}, _From,
     State = #state{running_workers = MRW}) ->
-    L= maps:to_list(MRW),
+    L = maps:to_list(MRW),
     S = lists:filter(fun({_, #task{id = TID}}) -> TID =:= ID end, L),
     [gen_server:cast(K, {stop}) || {K, _} <- S],
     {reply, ok, State};
 handle_call({status}, _From, State = #state{running_workers = MRW}) ->
-    R = [list_to_binary(io_lib:format("Pid:~w - Task: ~w ~n", [K, V])) || {K, V} <- maps:to_list(MRW)],
-    {reply, R, State};
+    L = [list_to_binary(io_lib:format("Pid:~w - Id: ~p Module start: [~s]", [K, ID, MS])) || {K, #task{id = ID, module_start = MS}} <- maps:to_list(MRW)],
+    {reply, L, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
