@@ -20,11 +20,12 @@ def on_message(ch, method, properties, body):
 
 
 def threaded_rmq(channel_):
-    result = channel_.queue_declare(queue='test_queue', durable = True)
-                                    # ,
-                                    # arguments={"x-expires": 30000})
+    channel_.exchange_declare(exchange='test_exchange_1', durable=True,
+                              exchange_type="fanout")
+    result = channel_.queue_declare(queue='my_queue', durable=True)
     queue_name = result.method.queue
-    channel_.queue_bind(exchange="chat", queue=queue_name, routing_key="")
+    channel_.queue_bind(exchange="test_exchange_1", queue=queue_name,
+                        routing_key="")
     channel_.basic_qos(prefetch_count=1)
     channel_.basic_consume(on_message, queue=queue_name,
                            no_ack=False)
@@ -32,10 +33,10 @@ def threaded_rmq(channel_):
 
 
 def start(rabbitmq_host, rabbitmq_port):
-    credentials = pika.PlainCredentials('test', "test")
+    credentials = pika.PlainCredentials('guest', "guest")
     parameters = pika.ConnectionParameters(rabbitmq_host,
                                            rabbitmq_port,
-                                           'async',
+                                           '/',
                                            credentials)
     global description
     description = "host: " + rabbitmq_host + ", port:" + str(rabbitmq_port)

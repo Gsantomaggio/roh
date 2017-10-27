@@ -135,13 +135,12 @@ handle_call({stop_all_tasks}, _From,
     State = #state{running_workers = MRW}) ->
     L = maps:to_list(MRW),
     [gen_server:cast(K, {stop}) || {K, _} <- L],
-    {reply, ok, State};
+    {reply, L, State};
 handle_call({stop_task, ID}, _From,
     State = #state{running_workers = MRW}) ->
-    L = maps:to_list(MRW),
-    S = lists:filter(fun({_, #task{id = TID}}) -> TID =:= ID end, L),
+    S = lists:filter(fun({_, #task{id = TID}}) -> TID =:= ID end, maps:to_list(MRW)),
     [gen_server:cast(K, {stop}) || {K, _} <- S],
-    {reply, ok, State};
+    {reply, S, State};
 handle_call({status}, _From, State = #state{running_workers = MRW}) ->
     L = [list_to_binary(io_lib:format("Pid:~w - Id: ~p Module start: [~s]", [K, ID, MS])) || {K, #task{id = ID, module_start = MS}} <- maps:to_list(MRW)],
     {reply, L, State};

@@ -39,7 +39,7 @@ test:
 	@$(REBAR3) do ct, cover
 
 sh_test:
-	@$(REBAR3) as test shell --sname roh
+	@$(REBAR3) as test shell --name roh@10.0.2.2
 
 release: $(REBAR3)
 	@$(REBAR3) release

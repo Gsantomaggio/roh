@@ -10,12 +10,24 @@
 -author("gabriele").
 
 %% API
--export([status/0]).
+-export([status/0, stop_tasks/0, stop_task/1, call_status/0]).
 
+
+call_status() ->
+     gen_server:multi_call([node() | nodes()], roh_pool, {status}, 5000).
 
 status() ->
-    {Replies, _BadNodes} = gen_server:multi_call([node() | nodes()], roh_pool, {status}, 5000),
-
+    {Replies, _BadNodes} = call_status(),
     roh_console_log:out("Server status: ~n ~p", [Replies]).
+
+
+stop_tasks() ->
+    {Replies, _BadNodes} = gen_server:multi_call([node() | nodes()], roh_pool, {stop_all_tasks}, 5000),
+    roh_console_log:out("Tasks stopped: ~n ~p", [Replies]).
+
+
+stop_task(ID) ->
+    {Replies, _BadNodes} = gen_server:multi_call([node() | nodes()], roh_pool, {stop_task, ID}, 5000),
+    roh_console_log:out("Task stopped: ~n ~p", [Replies]).
 
 

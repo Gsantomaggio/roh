@@ -18,8 +18,8 @@ def start(rabbitmq_host, rabbitmq_port):
     channel = connection.channel()
 
     for x in xrange(1,5000):
-        result = channel.queue_declare(queue=str(uuid.uuid4()) + "_" + str(rabbitmq_port), durable = True,
-                                     arguments={"x-expires": 1200000})
+        channel.queue_declare(queue=str(uuid.uuid4()) + "_" + str(rabbitmq_port),
+                                     arguments={"x-expires": 4200000})
 
     print "Finished: " + description
 

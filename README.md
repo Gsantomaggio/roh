@@ -34,3 +34,9 @@ Server status:
 
 The script is running across the cluster !!
 
+You can check the status using the web interface:
+
+```
+http://localhost:8080/api/management
+```
+
