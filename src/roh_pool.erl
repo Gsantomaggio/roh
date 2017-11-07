@@ -87,10 +87,7 @@ init([WorkerModule]) ->
 
 
 is_watermark_processes(MRW) ->
-    case maps:size(MRW) of
-        Value when Value < ?MAX_TASKS -> false;
-        Value when Value >= ?MAX_TASKS -> true
-    end.
+     maps:size(MRW) >= ?MAX_TASKS.
 
 
 
@@ -141,8 +138,8 @@ handle_call({stop_task, ID}, _From,
     S = lists:filter(fun({_, #task{id = TID}}) -> TID =:= ID end, maps:to_list(MRW)),
     [gen_server:cast(K, {stop}) || {K, _} <- S],
     {reply, S, State};
-handle_call({status}, _From, State = #state{running_workers = MRW}) ->
-    L = [list_to_binary(io_lib:format("Pid:~w - Id: ~p Module start: [~s]", [K, ID, MS])) || {K, #task{id = ID, module_start = MS}} <- maps:to_list(MRW)],
+handle_call({status}, _From, State = #state{running_workers = MRW, supervisor = SUP}) ->
+    L = [list_to_binary(io_lib:format("Pid:~w - Id: ~p Module start: [~s] Sup: ~w", [K, ID, MS, SUP])) || {K, #task{id = ID, module_start = MS}} <- maps:to_list(MRW)],
     {reply, L, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
