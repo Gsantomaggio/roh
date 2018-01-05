@@ -35,8 +35,8 @@ docs:
 	@$(REBAR3) edoc
 
 
-test: 
-	@$(REBAR3) do ct, cover
+test:
+	@$(REBAR3) do ct --logdir logs, cover
 
 sh_test:
 	@$(REBAR3) as test shell --name roh@10.0.2.2
