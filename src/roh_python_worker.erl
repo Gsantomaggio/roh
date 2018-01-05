@@ -62,6 +62,8 @@ start_link() ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
+    {ok, D} = file:get_cwd(),
+    roh_console_log:info("The current directory is: ~s",[D]),
     {ok, PythonInstance} = python:start([{python_path, "python_scripts/"}, {python, "python"}]),
     {ok, #state{python_instance = PythonInstance}}.
 

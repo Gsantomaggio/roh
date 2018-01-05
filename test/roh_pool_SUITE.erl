@@ -16,10 +16,12 @@
 all() -> [test_worker_script].
 
 init() ->
-    roh_app:start(default,default).
+    roh_app:start_pool().
 
 test_worker_script(_Config) ->
-    {ok, PID} = init(),
+    {ok, _PID} = init(),
+    roh_pool:add_task(roh_task_util:new_task(test)),
+    ct:log("ciao"),
 
     1 = 1.
 

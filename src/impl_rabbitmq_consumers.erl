@@ -23,7 +23,7 @@ lc() ->
 
 
 getTask(Port) ->
-    UUID = erlang:phash2({rand:uniform(500), now()}),
+    UUID = erlang:phash2({rand:uniform(500), erlang:timestamp()}),
     Task = #task{id = UUID, module_start = consumer, function_start = start, parameters_start = [localhost, Port],
         module_stop = consumer, function_stop = stop, parameters_stop = []},
     Task.
@@ -36,7 +36,7 @@ add_cluster_consumer(Port) ->
 
 
 getPumpTask(Port) ->
-    UUID = erlang:phash2({rand:uniform(500), now()}),
+    UUID = erlang:phash2({rand:uniform(500), erlang:timestamp()}),
     Task = #task{id = UUID, module_start = create_queues, function_start = start, parameters_start = [localhost, Port],
         module_stop = create_queues, function_stop = stop, parameters_stop = []},
     Task.
