@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/Gsantomaggio/roh.svg?branch=master)](https://travis-ci.org/Gsantomaggio/roh)
+
 # roh
 ROH is a distributed Python tasks manager.
 
