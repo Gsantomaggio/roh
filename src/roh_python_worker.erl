@@ -30,7 +30,6 @@
 
 
 get_python_path() ->
-
     case application:get_env(roh, python_scripts_path) of
         undefined -> {ok, P} = file:get_cwd(),
             P;

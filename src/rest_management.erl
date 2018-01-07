@@ -23,8 +23,8 @@ content_types_provided(Req, State) ->
 
 
 to_json_item(Item) ->
-    {Node, Detail} = Item,
-    json_utils:encode([{<<"node">>, Node},{<<"running_tasks">>, Detail} ]).
+    {Node, {RunningTasks,WaitingQueue}} = Item,
+    json_utils:encode([{<<"node">>, Node},{<<"running_tasks">>, RunningTasks},{<<"waiting_tasks">>, WaitingQueue} ]).
 
 
 to_json({Replies, _BadNodes}) ->

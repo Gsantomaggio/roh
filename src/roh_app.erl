@@ -31,6 +31,7 @@ start(_StartType, _StartArgs) ->
     {ok, _} = cowboy:start_clear(http, [{port, 8080}], #{
         env => #{dispatch => Dispatch}
     }),
+    application:start(yamerl),
     start_pool().
 
 %%--------------------------------------------------------------------
