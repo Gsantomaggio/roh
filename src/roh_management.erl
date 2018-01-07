@@ -18,7 +18,7 @@ call_status() ->
 
 status() ->
     {Replies, _BadNodes} = call_status(),
-    roh_console_log:out("Server status: ~n ~p", [Replies]).
+    Replies.
 
 
 stop_tasks() ->

@@ -28,6 +28,17 @@
 
 -record(state, {python_instance = no_istance, current_task = no_task}).
 
+
+get_python_path() ->
+
+    case application:get_env(roh, python_scripts_path) of
+        undefined -> {ok, P} = file:get_cwd(),
+            P;
+        Value -> {ok, P} = Value,
+            P
+    end.
+
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -62,9 +73,8 @@ start_link() ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    {ok, D} = file:get_cwd(),
-    roh_console_log:info("The current directory is: ~s",[D]),
-    {ok, PythonInstance} = python:start([{python_path, "python_scripts/"}, {python, "python"}]),
+    roh_console_log:info("The current directory is: ~s", [get_python_path()]),
+    {ok, PythonInstance} = python:start([{python_path, get_python_path() ++ "/python_scripts/"}, {python, "python"}]),
     {ok, #state{python_instance = PythonInstance}}.
 
 
@@ -83,8 +93,16 @@ init([]) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+handle_call({start, Task = #task{id = UUID, module_start = M, function_start = F, parameters_start = Prs}, _Sup}, _From, State = #state{python_instance = PythonInstance}) ->
+    roh_console_log:info("Sync Script worker ~w, function ~s, parameters ~w", [UUID, F, Prs]),
+    python:call(PythonInstance, M, F, Prs),
+    roh_console_log:info("Sync end Script worker ~w, function ~s, parameters ~w", [UUID, F, Prs]),
+    {reply, ok, State#state{current_task = Task}, hibernate};
+handle_call({stop}, _From, State = #state{python_instance = PythonInstance, current_task = CT}) ->
+    roh_console_log:info("Sync Stopping... ~w", [CT#task.id]),
+    python:call(PythonInstance, CT#task.module_stop, CT#task.function_stop, CT#task.parameters_stop),
+    python:stop(PythonInstance),
+    {stop, normal, State#state{python_instance = no_instance, current_task = no_task}, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -97,9 +115,10 @@ handle_call(_Request, _From, State) ->
     {noreply, NewState :: #state{}} |
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_cast({start, Task = #task{id = UUID, module_start  = M, function_start = F, parameters_start = Prs}, _Sender}, State = #state{python_instance = PythonInstance}) ->
+handle_cast({start, Task = #task{id = UUID, module_start = M, function_start = F, parameters_start = Prs}, _Sender}, State = #state{python_instance = PythonInstance}) ->
     roh_console_log:info("Script worker ~w, function ~s, parameters ~w", [UUID, F, Prs]),
     python:call(PythonInstance, M, F, Prs),
+    roh_console_log:info("Script END worker ~w, function ~s, parameters ~w", [UUID, F, Prs]),
     {noreply, State#state{current_task = Task}};
 handle_cast({stop}, State = #state{python_instance = PythonInstance, current_task = CT}) ->
     roh_console_log:info("Stopping... ~w", [CT#task.id]),

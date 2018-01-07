@@ -131,12 +131,12 @@ handle_call({add_task, Task}, _From,
 handle_call({stop_all_tasks}, _From,
     State = #state{running_workers = MRW}) ->
     L = maps:to_list(MRW),
-    [gen_server:cast(K, {stop}) || {K, _} <- L],
+    [cast_stop_worker(K) || {K, _} <- L],
     {reply, L, State};
 handle_call({stop_task, ID}, _From,
     State = #state{running_workers = MRW}) ->
     S = lists:filter(fun({_, #task{id = TID}}) -> TID =:= ID end, maps:to_list(MRW)),
-    [gen_server:cast(K, {stop}) || {K, _} <- S],
+    [cast_stop_worker(K) || {K, _} <- S],
     {reply, S, State};
 handle_call({status}, _From, State = #state{running_workers = MRW, supervisor = _SUP}) ->
     L = [list_to_binary(io_lib:format("~w ~w", [K, T])) ||
@@ -144,6 +144,15 @@ handle_call({status}, _From, State = #state{running_workers = MRW, supervisor = 
     {reply, L, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
+
+
+cast_stop_worker(PID) ->
+    case is_process_alive(PID) of
+        false -> roh_console_log:warning("process not alive ~w",[PID]);
+        true -> roh_console_log:info("process  alive ~w",[PID]), gen_server:call(PID, {stop})
+    end.
+
+
 
 %%--------------------------------------------------------------------
 %% @private
