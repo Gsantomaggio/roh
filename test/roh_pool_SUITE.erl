@@ -11,19 +11,23 @@
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
--export([all/0, init_per_testcase/2]).
+-export([all/0, init_per_group/2, groups/0, end_per_group/2]).
 -export([test_worker_script/1, test_max_length/1]).
 
-all() -> [test_worker_script, test_max_length].
+all() -> [{group, roh_pool_t}].
 
-start_pool() ->
-    roh_app:start_pool().
+groups() -> [{roh_pool_t, [],
+    [test_worker_script, test_max_length]}].
 
 
-init_per_testcase(_, Config) ->
+init_per_group(roh_pool_t, Config) ->
     application:set_env(roh, python_scripts_path, proplists:get_value(data_dir, Config)),
-    start_pool(),
+    application:ensure_all_started(roh),
     Config.
+
+end_per_group(roh_pool_t, _Config) ->
+    application:stop(roh),
+    ok.
 
 
 test_worker_script(_Config) ->
@@ -56,6 +60,8 @@ test_max_length(_Config) ->
     [{_, {Running2, WaitingQueue2}}] = roh_management:status(),
     ?assert(length(Running2) == 0),
     ?assert(length(WaitingQueue2) == 0).
+
+
 
 
 
