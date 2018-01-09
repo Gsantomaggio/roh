@@ -61,3 +61,8 @@ result:
 ]
 ```
 
+#Build from source
+
+```
+gmake
+```
