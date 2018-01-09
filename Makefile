@@ -36,7 +36,7 @@ docs:
 
 
 test:
-	@$(REBAR3) do ct  --verbose
+	@$(REBAR3) do ct  cover --verbose
 
 sh_test:
 	@$(REBAR3) as test shell --name roh@10.0.2.2
