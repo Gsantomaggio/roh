@@ -8,7 +8,7 @@ ebin/*.beam
 rel/example_project
 .concrete/DEV_MODE
 .rebar
-
+lsp/
 *.html
 *.pdf
 .idea/
