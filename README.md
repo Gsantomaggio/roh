@@ -61,6 +61,12 @@ result:
 ]
 ```
 
+## Full documentation
+
+[Full documentation HTML](https://gsantomaggio.github.io/roh/)
+
+[Full documentation PDF](https://gsantomaggio.github.io/roh/index.pdf)
+
 #Build from source
 
 ```

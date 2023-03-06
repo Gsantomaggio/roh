@@ -6,7 +6,7 @@
 ifndef::imagesdir[:imagesdir: images]
 
 
-Documentation example
+Overview
 
 include::overview.adoc[]
 

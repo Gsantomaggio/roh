@@ -125,7 +125,6 @@ maybe_run_next_Q(QWQ, Sup, MRW) ->
     {stop, Reason :: term(), NewState :: #state{}}).
 handle_call({add_task, Task}, _From,
     State = #state{running_workers = MRW, waiting_queue = QWQ, supervisor = Sup}) ->
-
     case is_watermark_processes(MRW) of
         true ->
             QWQ2 = queue:in(Task, QWQ),
