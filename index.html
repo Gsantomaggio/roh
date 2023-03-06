@@ -514,7 +514,8 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 <ul class="sectlevel1">
 <li><a href="#_what_is_a_roh">What is a ROH?</a></li>
 <li><a href="#_when_to_use_roh">When to Use ROH?</a></li>
-<li><a href="#_lets_see_some_code">Let&#8217;s see some code</a></li>
+<li><a href="#_lets_see_some_python_code">Let&#8217;s see some python code</a></li>
+<li><a href="#_lets_see_some_erlang_code">Let&#8217;s see some erlang code</a></li>
 </ul>
 </div>
 </div>
@@ -546,7 +547,7 @@ table.CodeRay td.code{padding:0 0 0 .75em}
 </div>
 </div>
 <div class="sect1">
-<h2 id="_lets_see_some_code">Let&#8217;s see some code</h2>
+<h2 id="_lets_see_some_python_code">Let&#8217;s see some python code</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The following snippet shows some internals.</p>
@@ -621,10 +622,54 @@ channel_.start_consuming()</code></pre>
 </table>
 </div>
 </div>
+<div class="sect1">
+<h2 id="_lets_see_some_erlang_code">Let&#8217;s see some erlang code</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The following snippet shows some internals.</p>
+</div>
+<div class="listingblock">
+<div class="title">erlang module</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="erlang">-spec(handle_call(Request :: term(), From :: {pid(), Tag :: term()}, % <b class="conum">(1)</b>
+    State :: #state{}) -&gt;
+    {reply, Reply :: term(), NewState :: #state{}} |
+    {reply, Reply :: term(), NewState :: #state{}, timeout() | hibernate} |
+    {noreply, NewState :: #state{}} |
+    {noreply, NewState :: #state{}, timeout() | hibernate} |
+    {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
+    {stop, Reason :: term(), NewState :: #state{}}).
+handle_call({add_task, Task}, _From,
+    State = #state{running_workers = MRW, waiting_queue = QWQ, supervisor = Sup}) -&gt;
+    case is_watermark_processes(MRW) of % <b class="conum">(2)</b>
+        true -&gt;
+            QWQ2 = queue:in(Task, QWQ),
+            roh_console_log:info(&quot;Added in waiting list, current size: ~w&quot;, [queue:len(QWQ2)]),
+            {reply, ok, State#state{waiting_queue = QWQ2, global = State#state.global + 1}};
+        false -&gt; MRW2 = execute_new_worker(Task, Sup, MRW),
+            {reply, ok, State#state{running_workers = MRW2, global = State#state.global + 1}} % <b class="conum">(3)</b>
+    end;</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Define the type for the analyzer</p>
+</li>
+<li>
+<p>check the watermark</p>
+</li>
+<li>
+<p>execute the task</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-03-06 19:05:00 UTC
+Last updated 2023-03-06 19:24:32 UTC
 </div>
 </div>
 </body>
