@@ -1,5 +1,0 @@
-## Name of the node
--name roh@10.0.2.2
-
-## Cookie for distributed erlang
--setcookie ESL

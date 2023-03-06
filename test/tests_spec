@@ -1,7 +1,0 @@
-{define, 'Top', "."}.
-{node, a, 'a@mac'}.
-{node, b, 'b@mac'}.
-{suites, a, 'Top', all}.
-
-{init, [a,b], [{node_start, [{monitor_master, true}]}]}.
-
