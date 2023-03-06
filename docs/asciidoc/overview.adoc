@@ -37,20 +37,20 @@ include::{test-examples}/consumer.py[tag=sample-imports]
 |===
 
 
-// == Let's see some erlang code
-//
-// The following snippet shows some internals.
-//
-// .erlang module
-//
-// [source,erlang,indent=0]
-// --------
-// include::{test-examples}/roh_pool.erl[tag=handle_call]
-// --------
-//
-// <1>  Define the type for the analyzer
-// <2>  check the watermark
-// <3>  execute the task
+== Let's see some erlang code
+
+The following snippet shows some internals.
+
+.erlang module
+
+[source,erlang,indent=0]
+--------
+include::{test-examples}/roh_pool.erl[tag=handle_call]
+--------
+
+<1>  Define the type for the analyzer
+<2>  check the watermark
+<3>  execute the task
 
 
 
