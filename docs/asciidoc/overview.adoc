@@ -1,0 +1,43 @@
+:test-examples: ../examples
+:stylesheet: clean.css
+== What is a ROH?
+
+ROH is a distributed Python tasks manager.
+
+It is possible to distribute python tasks across the network to different nodes
+
+
+== When to Use ROH?
+
+To distribute loads
+
+
+== Let's see some code
+
+The following snippet shows some internals.
+
+.the AMQP module
+[source,python,indent=0]
+--------
+include::{test-examples}/consumer.py[tag=sample-imports]
+--------
+
+<1> We define an exchange
+<2> We bind a queue
+<3> We send the ACK
+
+|===
+|*Name* |*Description*
+|`exchange` |The exchange to bind to
+|`queue` |The queue to bind to
+|`routing_key` |The routing key to bind with
+|`arguments` |Other properties (construction arguments) for the binding
+|`nowait` |Do not wait for the response
+|`callback` |A callback method taking one argument, the bound queue
+|`ticket` |The ticket number
+|===
+
+
+
+
+
